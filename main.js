@@ -89,8 +89,8 @@ async function settings() {
 	const response = await Enquirer.select({
 		name: 'Options',
 		message: 'Options',
-		choices: [config[0].description, config[1].description, config[2].description, "Return"]
-		,
+		choices: [config[0].description, config[1].description, config[2].description, "Return"],
+		initial: 3
 	});
 	if (response === "Show hints") {
 		const setting1 = await Enquirer.toggle({
