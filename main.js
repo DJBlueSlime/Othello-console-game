@@ -34,6 +34,7 @@ Othello Game Board
 let fonts = ['Graffiti', 'Standard', 'Rounded', 'Epic', 'Cola', 'Braced', 'Caligraphy', 'Broadway']
 Math.random()
 let colors = [chalk.redBright, chalk.greenBright, chalk.yellowBright, chalk.blueBright, chalk.magentaBright, chalk.cyanBright, chalk.white, chalk.grey];
+let bgColors = [chalk.bgRedBright, chalk.bgGreenBright, chalk.bgYellowBright, chalk.bgBlueBright, chalk.bgMagentaBright, chalk.bgCyanBright, chalk.bgWhite, chalk.bgGrey];
 const black = chalk.black.bold("■");
 const white = chalk.white("■");
 let board = [];
@@ -42,8 +43,8 @@ const playerOnePiece = "Black";
 const playerTwoPiece = "White";
 let playerOneColor = chalk.redBright;
 let playerTwoColor = chalk.blueBright;
-const playerOneBgColor = chalk.bgRedBright;
-const playerTwoBgColor = chalk.bgBlueBright;
+let playerOneBgColor = chalk.bgRedBright;
+let playerTwoBgColor = chalk.bgBlueBright;
 class Cell {
 	constructor(piece, xPos, yPos, string) {
 		this.piece = piece;
@@ -86,7 +87,8 @@ async function settings() {
 	const response = await Enquirer.select({
 		name: 'Options',
 		message: 'Options',
-		choices: [config[0].description, config[1].description, config[2].description, "Return"]
+		choices: [config[0].description, config[1].description, config[2].description, "Return"],
+		initial: 3
 	});
 	if (response === "Show hints") {
 		const setting1 = await Enquirer.toggle({
@@ -158,6 +160,7 @@ async function settings() {
 				return "ReturnOpt"
 			}
 			playerOneColor = colors[res.P1Color];
+			playerOneBgColor = bgColors[res.P1Color]
 		})
 		return "ReturnOpt";
 	} else if (response === "P2 Color") {
@@ -213,6 +216,7 @@ async function settings() {
 				return "ReturnOpt"
 			}
 			playerTwoColor = colors[res.P2Color];
+			playerTwoBgColor = bgColors[res.P2Color]
 		})
 		return "ReturnOpt";
 	}
@@ -648,7 +652,7 @@ async function playTurn(playerToMove) {
 		enquirer.register('inputmove', InputPrompt)
 		const promptInput = new InputPrompt({
 			type: 'prompt',
-			message: `${playerOneColor("(" + playerToMove + ")")} ${playerOneBgColor(" Input move! ")} ${chalk.gray("[Format must be: X, Y]:")} `,
+			message: `${playerOneColor("(" + playerToMove + ")")} ${playerOneBgColor.black(" Input move! ")} ${chalk.gray("[Format must be: X, Y]:")} `,
 			autofill: "show",
 			prompt: "A"
 		})
@@ -687,7 +691,7 @@ async function playTurn(playerToMove) {
 			}
 		})
 	} else {
-		input = prompt(`${playerTwoColor("(" + playerToMove + ")")} ${playerTwoBgColor(" Input move! ")} ${chalk.gray("[Format must be: X, Y]:")} `)
+		input = prompt(`${playerTwoColor("(" + playerToMove + ")")} ${playerTwoBgColor.black(" Input move! ")} ${chalk.gray("[Format must be: X, Y]:")} `)
 		if (!input) {
 			console.log("Exiting...");
 			process.exit(1)
