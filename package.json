@@ -3,16 +3,19 @@
     "@types/prompt-sync": "^4.1.1",
     "chalk": "^5.0.0",
     "enquirer": "^2.3.6",
+    "esm": "^3.2.25",
     "figlet": "^1.5.2",
     "prompt-choices": "^5.0.0",
     "prompt-sync": "^4.2.0"
   },
+  "main": "./main.js",
   "type": "module",
-  "name": "othello",
+  "name": "othello-game",
   "description": "Othello game in console!",
-  "version": "1.0.0",
-  "main": "main.js",
-  "devDependencies": {},
+  "version": "1.0.1",
+  "bin": {
+    "othello": "./main.js"
+  },
   "scripts": {
     "test": "node main.js"
   },
