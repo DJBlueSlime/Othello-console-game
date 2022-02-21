@@ -2,8 +2,10 @@ import chalk from 'chalk';
 import promptSync from 'prompt-sync';
 import figlet from 'figlet';
 import promptChoices from "prompt-choices"
-import enquirer from 'enquirer';
+import Enquirer from 'enquirer';
+// import Enquirer from 'enquirer';
 const prompt = promptSync();
+let enquirer = new Enquirer();
 // const enquirere = new Enquirer()
 
 
@@ -29,17 +31,17 @@ Othello Game Board
 8 ║   ║   ║   ║   ║   ║   ║   ║   ║    // Line 17
   ╚═══╩═══╩═══╩═══╩═══╩═══╩═══╩═══╝    // Line 18
 */
-let fonts = ['Trek', 'Star Wars', 'Graffiti', 'Standard', 'Rounded', 'Epic', 'Cola', 'Braced', 'Caligraphy', 'Broadway']
+let fonts = ['Graffiti', 'Standard', 'Rounded', 'Epic', 'Cola', 'Braced', 'Caligraphy', 'Broadway']
 Math.random()
-
+let colors = [chalk.redBright, chalk.greenBright, chalk.yellowBright, chalk.blueBright, chalk.magentaBright, chalk.cyanBright, chalk.white, chalk.grey];
 const black = chalk.black.bold("■");
 const white = chalk.white("■");
 let board = [];
 let currentTurn = "P1";
 const playerOnePiece = "Black";
 const playerTwoPiece = "White";
-const playerOneColor = chalk.redBright;
-const playerTwoColor = chalk.blueBright;
+let playerOneColor = chalk.redBright;
+let playerTwoColor = chalk.blueBright;
 const playerOneBgColor = chalk.bgRedBright;
 const playerTwoBgColor = chalk.bgBlueBright;
 class Cell {
@@ -52,7 +54,7 @@ class Cell {
 }
 let movableCellsForTurn = [];
 let cellsWithPieces = [];
-const othelloText = fonts[Math.floor(Math.random()*fonts.length)];
+const othelloText = fonts[Math.floor(Math.random() * fonts.length)];
 async function mainMenu() {
 	console.log("\x1B[2J")
 	console.log(figlet.textSync('Othello', {
@@ -62,63 +64,176 @@ async function mainMenu() {
 		width: 200,
 		whitespaceBreak: true
 	}), "\n");
-	const response = await enquirer.select({
+	const response = await Enquirer.select({
 		name: 'MainMenu',
 		message: 'Main Menu',
-		choices: ["Play", "Options", "Credits"]
-	  });
-	  return response;
+		choices: ["Play", "Settings", "About"]
+	});
+	return response;
 }
 
-let settings = [{showHints: false, description: "Show hints"}, {playerOneColor: chalk.redBright, description: "P1 Color"}, {playerTwoColor: chalk.blueBright, description: "P2 Color"}]
+let config = [{ showHints: false, description: "Show hints" }, { playerOneColor: chalk.redBright, description: "P1 Color" }, { playerTwoColor: chalk.blueBright, description: "P2 Color" }]
 
-async function options() {
+async function settings() {
 	console.log("\x1B[2J")
-	console.log(figlet.textSync('Othello', {
+	console.log(figlet.textSync('Settings', {
 		font: othelloText,
 		horizontalLayout: 'default',
 		verticalLayout: 'default',
 		width: 200,
 		whitespaceBreak: true
 	}), "\n");
-	const response = await enquirer.select({
+	const response = await Enquirer.select({
 		name: 'Options',
 		message: 'Options',
-		choices: [settings[0].description, settings[1].description, settings[2].description, "Return"]
-	  });
-	  if (response === "Show hints") {
-		  const setting1 = await enquirer.toggle({
-	  		message: `Change 'Show hints' - ${(settings[0].showHints) ? "Enabled" : "Disabled"}`,
-	  		enabled: 'Enabled',
-	  		disabled: 'Disabled'
-	  	  }).then(res => {
-				if (res === true) {
-					settings[0].showHints = true;
-				} else {
-					settings[0].showHints = false;
-				}
+		choices: [config[0].description, config[1].description, config[2].description, "Return"]
+	});
+	if (response === "Show hints") {
+		const setting1 = await Enquirer.toggle({
+			message: `Change 'Show hints' - ${(config[0].showHints) ? "Enabled" : "Disabled"}`,
+			enabled: 'Enabled',
+			disabled: 'Disabled'
+		}).then(res => {
+			if (res === true) {
+				config[0].showHints = true;
+			} else {
+				config[0].showHints = false;
+			}
+			return "ReturnOpt"
+		})
+		return setting1;
+	}
+	let colorsString = [];
+	
+	if (response === "P1 Color") {
+		const questions = [{
+			type: 'select',
+			name: 'P1Color',
+			message: `Change 'P1 Color' - ${playerOneColor("Current P1 Color")}`,
+			initial: 0,
+			choices: () => {
+				let colorsArray = [];
+						for (let i = 0; i < colors.length; i++) {
+				// let colors = [chalk.redBright, chalk.greenBright, chalk.yellowBright, chalk.blueBright, chalk.magentaBright, chalk.cyanBright, chalk.white, chalk.grey];
+							let colorName;
+							switch (i) {
+								case 0:
+									colorName = 'Red'
+									break;
+								case 1:
+									colorName = 'Green'
+									break;
+								case 2:
+									colorName = 'Yellow'
+									break;
+								case 3:
+									colorName = 'Blue'
+									break;
+								case 4:
+									colorName = 'Magenta'
+									break;
+								case 5:
+									colorName = 'Cyan'
+									break;
+								case 6:
+									colorName = 'White'
+									break;
+								case 7:
+									colorName = 'Grey'
+									break;
+								default:
+									break;
+							}
+							colorsArray.push(
+								{ name: i, message: `${colors[i](colorName)}`, value: colors[i]}
+							)
+						}
+						colorsArray.push({name: 'Return', message: 'Return', value: 'Return'});
+						return colorsArray;
+					}
+		  }];
+		let answers = await enquirer.prompt(questions).then(res => {
+			console.log(res.P1Color);
+			if (res.P1Color === "Return") {
 				return "ReturnOpt"
-			})
-			return setting1;
-	  }
+			}
+			playerOneColor = colors[res.P1Color];
+		})
+		return "ReturnOpt";
+	} else if (response === "P2 Color") {
+		const questions = [{
+			type: 'select',
+			name: 'P2Color',
+			message: `Change 'P2 Color' - ${playerTwoColor("Current P2 Color")}`,
+			initial: 0,
+			choices: () => {
+				let colorsArray = [];
+						for (let i = 0; i < colors.length; i++) {
+				// let colors = [chalk.redBright, chalk.greenBright, chalk.yellowBright, chalk.blueBright, chalk.magentaBright, chalk.cyanBright, chalk.white, chalk.grey];
+							let colorName;
+							switch (i) {
+								case 0:
+									colorName = 'Red'
+									break;
+								case 1:
+									colorName = 'Green'
+									break;
+								case 2:
+									colorName = 'Yellow'
+									break;
+								case 3:
+									colorName = 'Blue'
+									break;
+								case 4:
+									colorName = 'Magenta'
+									break;
+								case 5:
+									colorName = 'Cyan'
+									break;
+								case 6:
+									colorName = 'White'
+									break;
+								case 7:
+									colorName = 'Grey'
+									break;
+								default:
+									break;
+							}
+							colorsArray.push(
+								{ name: i, message: `${colors[i](colorName)}`, value: colors[i]}
+							)
+						}
+						colorsArray.push({name: 'Return', message: 'Return', value: 'Return'});
+						return colorsArray;
+					}
+		  }];
+		let answers = await enquirer.prompt(questions).then(res => {
+			console.log(res.P2Color);
+			if (res.P2Color === "Return") {
+				return "ReturnOpt"
+			}
+			playerTwoColor = colors[res.P2Color];
+		})
+		return "ReturnOpt";
+	}
 	return response;
 }
 
 async function credits() {
 	console.log("\x1B[2J")
-	console.log(figlet.textSync('Othello', {
+	console.log(figlet.textSync('About', {
 		font: othelloText,
 		horizontalLayout: 'default',
 		verticalLayout: 'default',
 		width: 200,
 		whitespaceBreak: true
 	}), "\n");
-	console.log(chalk.bgWhite.black("Developer:") + " DJBlueSlime\n");
-	const response = await enquirer.select({
+	console.log("MIT LICENSE ©️ DJBlueSlime 2022\nVersion 1.0.0\n\nOthello game in console!\n");
+	const response = await Enquirer.select({
 		name: 'Options',
 		message: 'Options',
 		choices: ["Return"]
-	  });
+	});
 	return response;
 }
 
@@ -131,22 +246,22 @@ async function returnFunc() {
 		width: 200,
 		whitespaceBreak: true
 	}), "\n");
-	const response = await enquirer.select({
+	const response = await Enquirer.select({
 		name: 'MainMenu',
 		message: 'Main Menu',
-		choices: ["Play", "Options", "Credits"]
-	  });
-	  return response;
+		choices: ["Play", "Settings", "About"]
+	});
+	return response;
 }
 
 async function screenHandler(screen) {
-	if (screen === "Options" || screen === "ReturnOpt") {
-		return await options();
+	if (screen === "Settings" || screen === "ReturnOpt") {
+		return await settings();
 	}
 	if (screen === "Main Menu") {
 		return await mainMenu();
 	}
-	if (screen === "Credits") {
+	if (screen === "About") {
 		return await credits()
 	}
 	if (screen === "Return") {
@@ -160,10 +275,10 @@ await screenHandler("Main Menu").then(async e => {
 		play = true;
 		initGame()
 	}
-	if (e === "Options" || e === "Credits") {
+	if (e === "Settings" || e === "About") {
 		await screenHandler(e).then(async res => {
 
-			console.log(res, "res")
+			// console.log(res, "res")
 			nextScreen = res;
 		})
 	}
@@ -174,7 +289,7 @@ while (!play) {
 		await screenHandler(nextScreen).then(res => {
 			if (res === "Play") {
 				play = true;
-				// initGame();
+				initGame();
 			}
 			nextScreen = res;
 		})
@@ -182,12 +297,13 @@ while (!play) {
 }
 
 
-function initGame() {
+async function initGame() {
 	// This 'for' creates board
+	board.length = 0;
 	for (let y = 0; y < 8; y++) {
 		let row = [];
 		for (let x = 0; x < 8; x++) {
-			let cell = new Cell(null, x, y, " ");
+			let cell = new Cell(null, y, x, " ");
 			row.push(cell);
 		}
 		board.push(row);
@@ -199,12 +315,13 @@ function initGame() {
 
 	checkNumberOfPiecesInBoard();
 	checkForMovableCells(currentTurn);
-	printBoard(board)
+	await printBoard(board);
+	await playTurn(currentTurn);
 }
 
 // initGame();
 
-function printBoard(boardToPrint) {
+async function printBoard(boardToPrint) {
 	console.log(
 		`       ${chalk.bgWhite.black.bold("  B   O   A   R   D   ")}
 
@@ -248,7 +365,7 @@ function checkNumberOfPiecesInBoard() {
 	return piecesInBoard;
 }
 
-playTurn(currentTurn);
+// playTurn(currentTurn);
 
 function checkForMovableCells(playerTurn) {
 	movableCellsForTurn.length = 0;
@@ -290,6 +407,222 @@ function checkForMovableCells(playerTurn) {
 				}
 			}
 		}
+
+
+	}
+	console.log("func executed");
+}
+
+async function checkPlay(xPos, yPos, checkForPiecesFunc) {
+	let origin = [xPos, yPos]
+	let whitePiece = [];
+	let blackPiece = [];
+	let hasFoundFirstBlack = false;
+	let hasFoundFirstWhite = false;
+	for (let i = 0; i < 7 - xPos; i++) {
+		for (let j = 0; j < 7 - yPos; j++) {
+			// console.log("For " + i, "J " + j);
+			let x = xPos;
+			let y = yPos;
+
+			let topLeft = [x - 1, y - 1]
+			let top = [x, y - 1]
+			let topRight = [x + 1, y - 1]
+
+			let midLeft = [x - 1, y]
+			let mid = [x, y]
+			let midRight = [x + 1, y]
+
+			let botLeft = [x - 1, y + 1]
+			let bot = [x, y + 1]
+			let botRight = [x + 1, y + 1];
+			console.log(currentTurn);
+
+			console.log(board[botRight[0]][botRight[1]]);
+			if (board[mid[0]][mid[1]].piece === playerOnePiece && currentTurn === "P1") {
+				hasFoundFirstBlack = true;
+			} else if (board[bot[0]][bot[1]].piece === playerTwoPiece && currentTurn === "P2") {
+				hasFoundFirstWhite = true;
+			}
+			if (board[bot[0]][bot[1]].piece) {
+				if (board[bot[0]][bot[1]].piece === playerOnePiece) {
+					// hasFoundFirstBlack = true;
+					blackPiece.push(board[bot[0]][bot[1]]);
+					if (hasFoundFirstBlack && currentTurn === "P1") {
+						whitePiece.push(board[bot[0]][bot[1]]);
+					} else if (hasFoundFirstWhite && currentTurn === "P2") {
+						blackPiece.push(board[bot[0]][bot[1]]);
+					}
+				}
+				if (board[bot[0]][bot[1]].piece === playerTwoPiece) {
+					// console.log("White piece found!");
+					// hasFoundFirstWhite = true;
+					if (hasFoundFirstBlack && currentTurn === "P1") {
+						whitePiece.push(board[bot[0]][bot[1]]);
+					} else if (hasFoundFirstWhite && currentTurn === "P2") {
+						blackPiece.push(board[bot[0]][bot[1]]);
+					}
+				}
+			}
+
+			if (board[botRight[0]][botRight[1]].piece) {
+				if (board[botRight[0]][botRight[1]].piece === playerOnePiece) {
+					hasFoundFirstBlack = true;
+					blackPiece.push(board[botRight[0]][botRight[1]]);
+					if (hasFoundFirstBlack) {
+						whitePiece.push(board[botRight[0]][botRight[1]]);
+					} else if (hasFoundFirstWhite) {
+						blackPiece.push(board[botRight[0]][botRight[1]]);
+					}
+				}
+				if (board[botRight[0]][botRight[1]].piece === playerTwoPiece) {
+					// console.log("White piece found!");
+					hasFoundFirstWhite = true;
+					if (hasFoundFirstBlack) {
+						whitePiece.push(board[botRight[0]][botRight[1]]);
+					} else if (hasFoundFirstWhite) {
+						blackPiece.push(board[botRight[0]][botRight[1]]);
+					}
+				}
+			}
+
+			if (board[botLeft[0]][botLeft[1]].piece) {
+				if (board[botLeft[0]][botLeft[1]].piece === playerOnePiece) {
+					// hasFoundFirstBlack = true;
+					blackPiece.push(board[botLeft[0]][botLeft[1]]);
+					if (hasFoundFirstBlack && currentTurn === "P1") {
+						whitePiece.push(board[botLeft[0]][botLeft[1]]);
+					} else if (hasFoundFirstWhite && currentTurn === "P2") {
+						blackPiece.push(board[botLeft[0]][botLeft[1]]);
+					}
+				}
+				if (board[botLeft[0]][botLeft[1]].piece === playerTwoPiece) {
+					// console.log("White piece found!");
+					// hasFoundFirstWhite = true;
+					if (hasFoundFirstBlack && currentTurn === "P1") {
+						whitePiece.push(board[botLeft[0]][botLeft[1]]);
+					} else if (hasFoundFirstWhite && currentTurn === "P2") {
+						blackPiece.push(board[botLeft[0]][botLeft[1]]);
+					}
+				}
+			}
+
+			if (board[top[0]][top[1]].piece) {
+				if (board[top[0]][top[1]].piece === playerOnePiece) {
+					// hasFoundFirstBlack = true;
+					blackPiece.push(board[top[0]][top[1]]);
+					if (hasFoundFirstBlack && currentTurn === "P1") {
+						whitePiece.push(board[top[0]][top[1]]);
+					} else if (hasFoundFirstWhite && currentTurn === "P2") {
+						blackPiece.push(board[top[0]][top[1]]);
+					}
+				}
+				if (board[top[0]][top[1]].piece === playerTwoPiece) {
+					// console.log("White piece found!");
+					// hasFoundFirstWhite = true;
+					if (hasFoundFirstBlack && currentTurn === "P1") {
+						whitePiece.push(board[top[0]][top[1]]);
+					} else if (hasFoundFirstWhite && currentTurn === "P2") {
+						blackPiece.push(board[top[0]][top[1]]);
+					}
+				}
+			}
+
+			if (board[topRight[0]][topRight[1]].piece) {
+				if (board[topRight[0]][topRight[1]].piece === playerOnePiece) {
+					// hasFoundFirstBlack = true;
+					blackPiece.push(board[topRight[0]][topRight[1]]);
+					if (hasFoundFirstBlack && currentTurn === "P1") {
+						whitePiece.push(board[topRight[0]][topRight[1]]);
+					} else if (hasFoundFirstWhite && currentTurn === "P2") {
+						blackPiece.push(board[topRight[0]][topRight[1]]);
+					}
+				}
+				if (board[topRight[0]][topRight[1]].piece === playerTwoPiece) {
+					// console.log("White piece found!");
+					// hasFoundFirstWhite = true;
+					if (hasFoundFirstBlack && currentTurn === "P1") {
+						whitePiece.push(board[topRight[0]][topRight[1]]);
+					} else if (hasFoundFirstWhite && currentTurn === "P2") {
+						blackPiece.push(board[topRight[0]][topRight[1]]);
+					}
+				}
+			}
+
+			if (board[midLeft[0]][midLeft[1]].piece) {
+				if (board[midLeft[0]][midLeft[1]].piece === playerOnePiece) {
+					// hasFoundFirstBlack = true;
+					blackPiece.push(board[midLeft[0]][midLeft[1]]);
+					if (hasFoundFirstBlack && currentTurn === "P1") {
+						whitePiece.push(board[midLeft[0]][midLeft[1]]);
+					} else if (hasFoundFirstWhite && currentTurn === "P2") {
+						blackPiece.push(board[midLeft[0]][midLeft[1]]);
+					}
+				}
+				if (board[midLeft[0]][midLeft[1]].piece === playerTwoPiece) {
+					// console.log("White piece found!");
+					// hasFoundFirstWhite = true;
+					if (hasFoundFirstBlack && currentTurn === "P1") {
+						whitePiece.push(board[midLeft[0]][midLeft[1]]);
+					} else if (hasFoundFirstWhite && currentTurn === "P2") {
+						blackPiece.push(board[midLeft[0]][midLeft[1]]);
+					}
+				}
+			}
+
+			if (board[topLeft[0]][topLeft[1]].piece) {
+				if (board[topLeft[0]][topLeft[1]].piece === playerOnePiece) {
+					// hasFoundFirstBlack = true;
+					blackPiece.push(board[topLeft[0]][topLeft[1]]);
+					if (hasFoundFirstBlack && currentTurn === "P1") {
+						whitePiece.push(board[topLeft[0]][topLeft[1]]);
+					} else if (hasFoundFirstWhite && currentTurn === "P2") {
+						blackPiece.push(board[topLeft[0]][topLeft[1]]);
+					}
+				}
+				if (board[topLeft[0]][topLeft[1]].piece === playerTwoPiece) {
+					// console.log("White piece found!");
+					// hasFoundFirstWhite = true;
+					if (hasFoundFirstBlack && currentTurn === "P1") {
+						whitePiece.push(board[topLeft[0]][topLeft[1]]);
+					} else if (hasFoundFirstWhite && currentTurn === "P2") {
+						blackPiece.push(board[topLeft[0]][topLeft[1]]);
+					}
+				}
+			}
+
+			if (board[midRight[0]][midRight[1]].piece) {
+				if (board[midRight[0]][midRight[1]].piece === playerOnePiece) {
+					// hasFoundFirstBlack = true;
+					blackPiece.push(board[midRight[0]][midRight[1]]);
+					if (hasFoundFirstBlack && currentTurn === "P1") {
+						whitePiece.push(board[midRight[0]][midRight[1]]);
+					} else if (hasFoundFirstWhite && currentTurn === "P2") {
+						blackPiece.push(board[midRight[0]][midRight[1]]);
+					}
+				}
+				if (board[midRight[0]][midRight[1]].piece === playerTwoPiece) {
+					// console.log("White piece found!");
+					// hasFoundFirstWhite = true;
+					if (hasFoundFirstBlack && currentTurn === "P1") {
+						whitePiece.push(board[midRight[0]][midRight[1]]);
+					} else if (hasFoundFirstWhite && currentTurn === "P2") {
+						blackPiece.push(board[midRight[0]][midRight[1]]);
+					}
+				}
+			}
+
+			if (blackPiece && currentTurn === "P1") {
+				whitePiece.forEach(element => {
+					element.piece = playerOnePiece
+					element.string = black;
+				})
+			}
+
+		}
+	}
+	if (checkForPiecesFunc) {
+		return;
 	}
 }
 
@@ -297,9 +630,30 @@ async function playTurn(playerToMove) {
 	let input;
 	let xPos;
 	let yPos;
-	let canMove = false;
+	// let canMove = false;
 	if (playerToMove === "P1") {
-		input = prompt(`${playerOneColor("(" + playerToMove + ")")} ${playerOneBgColor(" Input move! ")} ${chalk.gray("[Format must be: X, Y]:")} `)
+		class InputPrompt extends Enquirer.Input {
+
+			constructor(options = {}) {
+				super(options);
+				this.cursorHide();
+				this.render()
+			}
+			render() {
+				this.clear(); // clear previously rendered prompt from the terminal
+				this.write(`${this.state.message}${this.state.input}`);
+			}
+		}
+		// enquirer.Enqregister()
+		enquirer.register('inputmove', InputPrompt)
+		const promptInput = new InputPrompt({
+			type: 'prompt',
+			message: `${playerOneColor("(" + playerToMove + ")")} ${playerOneBgColor(" Input move! ")} ${chalk.gray("[Format must be: X, Y]:")} `,
+			autofill: "show",
+			prompt: "A"
+		})
+		await promptInput.run().then(res => input = res)
+		// input = prompt(`${playerOneColor("(" + playerToMove + ")")} ${playerOneBgColor(" Input move! ")} ${chalk.gray("[Format must be: X, Y]:")} `)
 		if (!input) {
 			console.log("Exiting...");
 			process.exit(1)
@@ -310,42 +664,28 @@ async function playTurn(playerToMove) {
 		}
 		xPos = input.split(",")[0].trim();
 		yPos = input.split(",")[1].trim();
-		movableCellsForTurn.filter(v => v.xPos == xPos && v.yPos == yPos).forEach(element => {
-			console.log(chalk.redBright(`P1 moved [ ${element.xPos}, ${element.yPos} ]`), "\n");
-			for (let i = 0; i < 7 - element.xPos; i++) {
-				if (board[i][element.yPos].piece != null) {
-					console.log("Ne");
-				}
-				for (let j = 0; j < 7 - element.yPos; j++) {
-					if (board[i][j].piece != null) {
-						console.log("Ye");
-					}
-				}
-				
-			}
-			// for (let dx = (element.xPos > 0 ? -1 : 0); dx <= (element.xPos < 7 ? 1 : 0); ++dx) {
-			// 	for (let dy = (element.yPos > 0 ? -1 : 0); dy <= (element.yPos < 7 ? 1 : 0); ++dy) {
-			// 		if (dx !== 0 || dy !== 0) {
-			// 			let adjacent = board[element.xPos + dx][element.yPos + dy];
-			// 			console.log(dy + dy);
-			// 			if (adjacent.piece != null) {
-			// 				console.log("There is a piece adjacent to the move: " + adjacent.piece);
-			// 				console.log(7-element.yPos);
-			// 				for (let i = 0; i < 7-element.yPos; i++) {
-			// 					console.log(board[element.xPos][element.yPos+i].piece);
-			// 				}
-			// 			}
-			// 		}
-			// 	}
-			// }
+		console.log(xPos, yPos);
+		let canMove = new Promise(async (resolve, reject) => {
+			let valid = movableCellsForTurn.filter(v => v.xPos == xPos && v.yPos == yPos);
+			valid[0].string = "a"
+			board[valid[0].xPos][valid[0].yPos].string = "a"
+			board[0][0].string = "a"
+			// console.log(playerToMove);
 			board[Number(xPos)][Number(yPos)].string = (playerToMove === "P1") ? black : white;
 			board[Number(xPos)][Number(yPos)].piece = (playerToMove === "P1") ? playerOnePiece : playerTwoPiece;
-			canMove = true;
-		});
-		if (!canMove) {
-			console.log(chalk.red("\nERROR: Invalid Move!\n"));
-			gameloop()
-		}
+			// console.log(board[valid[0].xPos][valid[0].yPos].string);
+			// console.log(valid);
+			await checkPlay(Number(xPos), Number(yPos)).then(res => console.log(res))
+			resolve("Resuelto");
+			return true;
+		})
+		await canMove.then(async res => {
+			console.log(res);
+			if (!res) {
+				console.log(chalk.red("\nERROR: Invalid Move!\n"));
+				gameloop()
+			}
+		})
 	} else {
 		input = prompt(`${playerTwoColor("(" + playerToMove + ")")} ${playerTwoBgColor(" Input move! ")} ${chalk.gray("[Format must be: X, Y]:")} `)
 		if (!input) {
@@ -378,12 +718,13 @@ async function playTurn(playerToMove) {
 	checkNumberOfPiecesInBoard();
 	checkForMovableCells(currentTurn);
 	printBoard(board);
+	console.log("printed", board[3][4]);
 	gameloop();
 }
 
-function gameloop() {
+async function gameloop() {
 	// movableCellsForTurn.length = 0;
-	playTurn(currentTurn)
+	await playTurn(currentTurn)
 }
 
-playTurn(currentTurn)
+// playTurn(currentTurn)

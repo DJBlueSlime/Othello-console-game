@@ -7,5 +7,27 @@
     "prompt-choices": "^5.0.0",
     "prompt-sync": "^4.2.0"
   },
-  "type": "module"
+  "type": "module",
+  "name": "othello",
+  "description": "Othello game in console!",
+  "version": "1.0.0",
+  "main": "main.js",
+  "devDependencies": {},
+  "scripts": {
+    "test": "node main.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DJBlueSlime/Othello-console-game.git"
+  },
+  "keywords": [
+    "othello",
+    "board-game"
+  ],
+  "author": "DJBlueSlime",
+  "license": "AGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/DJBlueSlime/Othello-console-game/issues"
+  },
+  "homepage": "https://github.com/DJBlueSlime/Othello-console-game#readme"
 }
