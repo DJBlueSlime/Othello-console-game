@@ -1,5 +1,4 @@
 #! /usr/bin/env node
-
 import chalk from 'chalk';
 import promptSync from 'prompt-sync';
 import figlet from 'figlet';
@@ -75,7 +74,7 @@ async function mainMenu() {
 	return response;
 }
 
-let config = [{ showHints: false, description: "Show hints" }, { playerOneColor: chalk.redBright, description: "P1 Color" }, { playerTwoColor: chalk.blueBright, description: "P2 Color" }]
+let config = [{ showHints: true, description: "Show hints" }, { playerOneColor: chalk.redBright, description: "P1 Color" }, { playerTwoColor: chalk.blueBright, description: "P2 Color" }]
 
 async function settings() {
 	console.log("\x1B[2J")
@@ -148,6 +147,9 @@ async function settings() {
 								default:
 									break;
 							}
+							if (colors[i] == playerTwoColor) {
+								continue;
+							}
 							colorsArray.push(
 								{ name: i, message: `${colors[i](colorName)}`, value: colors[i]}
 							)
@@ -203,6 +205,9 @@ async function settings() {
 									break;
 								default:
 									break;
+							}
+							if (colors[i] == playerOneColor) {
+								continue;
 							}
 							colorsArray.push(
 								{ name: i, message: `${colors[i](colorName)}`, value: colors[i]}
@@ -276,19 +281,20 @@ async function screenHandler(screen) {
 }
 let nextScreen;
 let play = false;
-await screenHandler("Main Menu").then(async e => {
-	if (e === "Play") {
-		play = true;
-		initGame()
-	}
-	if (e === "Settings" || e === "About") {
-		await screenHandler(e).then(async res => {
-
-			// console.log(res, "res")
-			nextScreen = res;
-		})
-	}
-});
+await callScreen("Main Menu")
+async function callScreen(screen) {
+	await screenHandler(screen).then(async e => {
+		if (e === "Play") {
+			play = true;
+			initGame()
+		}
+		if (e === "Settings" || e === "About") {
+			await screenHandler(e).then(async res => {
+				nextScreen = res;
+			})
+		}
+	});
+}
 
 while (!play) {
 	if (nextScreen != null) {
@@ -320,8 +326,9 @@ async function initGame() {
 	[board[4][4].string, board[4][4].piece] = [white, playerTwoPiece];
 
 	checkNumberOfPiecesInBoard();
-	checkForMovableCells(currentTurn);
-	await printBoard(board);
+	await checkForMovableCells(currentTurn);
+	console.log("\x1B[2J")
+	printBoard(board);
 	await playTurn(currentTurn);
 }
 
@@ -353,7 +360,7 @@ async function printBoard(boardToPrint) {
 
 
 ${chalk.grey(`# = Cells where can be moved, colored for each player color.`)}
-${chalk.grey("Current turn: ")}${(currentTurn === "P1") ? playerOneColor(currentTurn) : playerTwoColor(currentTurn)}`);
+${(currentTurn === "P1") ? playerOneColor("Current turn: " + currentTurn) : playerTwoColor("Current turn: "+ currentTurn)}`);
 }
 
 // printBoard(board);
@@ -373,7 +380,7 @@ function checkNumberOfPiecesInBoard() {
 
 // playTurn(currentTurn);
 
-function checkForMovableCells(playerTurn) {
+async function checkForMovableCells(playerTurn) {
 	movableCellsForTurn.length = 0;
 	for (let i = 0; i < cellsWithPieces.length; i++) {
 
@@ -387,7 +394,7 @@ function checkForMovableCells(playerTurn) {
 				if (dx !== 0 || dy !== 0) {
 					result.push(board[x + dx][y + dy]);
 					let adjacent = board[x + dx][y + dy];
-					if (board[x + dx][y + dy].piece == null && board[x][y].piece === playerOnePiece && playerTurn === "P1") {
+					if (board[x + dx][y + dy].piece == null && board[x][y].piece === playerTwoPiece && playerTurn === "P1") {
 						for (let y2 = 0; y2 < 8; y2++) {
 							for (let x2 = 0; x2 < 8; x2++) {
 								if (board[x2][y2].string === playerTwoColor("#")) {
@@ -395,11 +402,13 @@ function checkForMovableCells(playerTurn) {
 								}
 							}
 						}
-						board[x + dx][y + dy].string = playerOneColor("#")
+						if (config[0].showHints) {
+							board[x + dx][y + dy].string = playerOneColor("#")
+						}
 						movableCellsForTurn.push(adjacent);
 						continue;
 					}
-					if (board[x + dx][y + dy].piece == null && board[x][y].piece === playerTwoPiece && playerTurn === "P2") {
+					if (board[x + dx][y + dy].piece == null && board[x][y].piece === playerOnePiece && playerTurn === "P2") {
 						for (let y2 = 0; y2 < 8; y2++) {
 							for (let x2 = 0; x2 < 8; x2++) {
 								if (board[x2][y2].string === playerOneColor("#")) {
@@ -407,16 +416,32 @@ function checkForMovableCells(playerTurn) {
 								}
 							}
 						}
-						board[x + dx][y + dy].string = playerTwoColor("#")
+						if (config[0].showHints) {
+							board[x + dx][y + dy].string = playerTwoColor("#")
+						}
 						movableCellsForTurn.push(adjacent);
 					}
 				}
 			}
 		}
-
+		// if (currentTurn === "P2") {
+		// 	movableCellsForTurn.push(board[2][4])	
+		// }
+		for (let i = 0; i < movableCellsForTurn.length; i++) {
+			const element = movableCellsForTurn[i];
+			await checkPlay(element.xPos, element.yPos, true).then(res => {
+				// console.log(element, "asdfsadfa");
+				if (!res) {
+					// console.log(element.string);
+					element.string = " ";
+					element.piece = null;
+					movableCellsForTurn.splice(i, 1);
+				}
+			})
+		}
+		// console.log(movableCellsForTurn);
 
 	}
-	console.log("func executed");
 }
 
 async function checkPlay(xPos, yPos, checkForPiecesFunc) {
@@ -425,13 +450,69 @@ async function checkPlay(xPos, yPos, checkForPiecesFunc) {
 	let blackPiece = [];
 	let hasFoundFirstBlack = false;
 	let hasFoundFirstWhite = false;
-	for (let i = 0; i < 7 - xPos; i++) {
-		for (let j = 0; j < 7 - yPos; j++) {
+	let hasFoundLastBlack;
+	let hasFoundLastWhite;
+	let x = xPos;
+	let y = yPos;
+	for (let i = 0; i < 7/* - xPos*/; i++) {
+		for (let j = 0; j < 7 /*- yPos*/; j++) {
 			// console.log("For " + i, "J " + j);
-			let x = xPos;
-			let y = yPos;
+			let sum = 1;
+			// console.log(y)
+			let xIsNegative;
+			let yIsNegative;
+			let maxX = 7
+			let maxY = 7
+			let minX = maxX - maxX;
+			let minY = maxY - maxY;
+			// if (x - sum < 0) {
+				
+			// 	let topLeftBoard = board[x - sum][ y - sum]
+			// }
+			// if (xIsNegative || yIsNegative) {
+			// 	if (xIsNegative && !yIsNegative) {
+			// 		console.log(board[x][ y - sum]);
+			// 	} else if (!xIsNegative && yIsNegative) {
+			// 		console.log(board[x - sum][y]);
+			// 	}
+			// }
+			// console.log(board[x - sum][ y - sum] ?? "undef");
 
-			let topLeft = [x - 1, y - 1]
+			let topLeftBoard = board[(x - sum <0) ? x : x - sum][ (y - sum < 0) ? y : y -sum]
+			let topBoard = board[x][(y - sum < 0) ? y : y -sum]
+			let topRightBoard = board[(x + sum > 7) ? x : x + sum][(y - sum < 0) ? y : y -sum]
+
+			let midLeftBoard = board[(x - sum < 0) ? x : x -sum][ y]
+			let midBoard = board[x][y]
+			let midRightBoard = board[(x + sum > 7) ? x : x + sum][ y]
+
+			let botLeftBoard = board[(x - sum < 0) ? x : x -sum][ (y + sum > 7) ? y : y + sum]
+			let botBoard = board[x][(y + sum > 7) ? y : y + sum]
+			let botRightBoard = board[(x + sum > 7) ? x : x + sum][(x + sum > 7) ? x : x + sum];
+
+			// (x - sum < 0) ? x : x -sum+1
+			// x substract ^
+			// (x + sum > 7) ? x : x + sum+1
+			// x plus ^
+
+			// (y - sum < 0) ? y : y -sum+1
+			// y substract ^
+			// (y + sum > 7) ? y : y + sum+1
+			// y plus ^
+
+
+			let topLeft = [(x - sum+1 < 0) ? x : x -sum+1, (y - sum < 0) ? y : y -sum+1]
+			let top = [x, (y - sum+1 < 0) ? y : y - sum+1]
+			let topRight = [(x + sum+1 > 7) ? x : x + sum+1, (y - sum < 0) ? y : y -sum+1]
+
+			let midLeft = [(x - sum+1 < 0) ? x : x -sum+1, y]
+			let mid = [x, y]
+			let midRight = [(x + sum+1 > 7) ? x : x + sum+1, y]
+
+			let botLeft = [(x - sum+1 < 0) ? x : x -sum+1, (y + sum > 7) ? y : y + sum+1]
+			let bot = [x, (y + sum+1 > 7) ? y : y + sum+1]
+			let botRight = [(x + sum+1 > 7) ? x : x + sum+1, (y + sum > 7) ? y : y + sum+1];
+			/* let topLeft = [x - 1, y - 1]
 			let top = [x, y - 1]
 			let topRight = [x + 1, y - 1]
 
@@ -441,195 +522,242 @@ async function checkPlay(xPos, yPos, checkForPiecesFunc) {
 
 			let botLeft = [x - 1, y + 1]
 			let bot = [x, y + 1]
-			let botRight = [x + 1, y + 1];
-			console.log(currentTurn);
+			let botRight = [x + 1, y + 1];*/
 
-			console.log(board[botRight[0]][botRight[1]]);
-			if (board[mid[0]][mid[1]].piece === playerOnePiece && currentTurn === "P1") {
-				hasFoundFirstBlack = true;
-			} else if (board[bot[0]][bot[1]].piece === playerTwoPiece && currentTurn === "P2") {
-				hasFoundFirstWhite = true;
-			}
-			if (board[bot[0]][bot[1]].piece) {
-				if (board[bot[0]][bot[1]].piece === playerOnePiece) {
-					// hasFoundFirstBlack = true;
-					blackPiece.push(board[bot[0]][bot[1]]);
-					if (hasFoundFirstBlack && currentTurn === "P1") {
-						whitePiece.push(board[bot[0]][bot[1]]);
-					} else if (hasFoundFirstWhite && currentTurn === "P2") {
-						blackPiece.push(board[bot[0]][bot[1]]);
-					}
-				}
-				if (board[bot[0]][bot[1]].piece === playerTwoPiece) {
-					// console.log("White piece found!");
-					// hasFoundFirstWhite = true;
-					if (hasFoundFirstBlack && currentTurn === "P1") {
-						whitePiece.push(board[bot[0]][bot[1]]);
-					} else if (hasFoundFirstWhite && currentTurn === "P2") {
-						blackPiece.push(board[bot[0]][bot[1]]);
-					}
-				}
-			}
-
-			if (board[botRight[0]][botRight[1]].piece) {
-				if (board[botRight[0]][botRight[1]].piece === playerOnePiece) {
+			if (midBoard) {
+				if (midBoard.piece === playerOnePiece && currentTurn === "P1") {
 					hasFoundFirstBlack = true;
-					blackPiece.push(board[botRight[0]][botRight[1]]);
-					if (hasFoundFirstBlack) {
-						whitePiece.push(board[botRight[0]][botRight[1]]);
-					} else if (hasFoundFirstWhite) {
-						blackPiece.push(board[botRight[0]][botRight[1]]);
-					}
-				}
-				if (board[botRight[0]][botRight[1]].piece === playerTwoPiece) {
-					// console.log("White piece found!");
+					
+				} 
+				if (midBoard.piece === playerTwoPiece && currentTurn === "P2") {
 					hasFoundFirstWhite = true;
-					if (hasFoundFirstBlack) {
-						whitePiece.push(board[botRight[0]][botRight[1]]);
-					} else if (hasFoundFirstWhite) {
-						blackPiece.push(board[botRight[0]][botRight[1]]);
+				}
+			}
+
+			if (checkForPiecesFunc) {
+				if (currentTurn === "P1") {
+					hasFoundFirstBlack = true;
+				} else if (currentTurn === "P2") {
+					hasFoundFirstWhite = true;
+				}
+			}
+
+			if (botBoard) {
+				if (currentTurn === "P1") {
+					if (botBoard.piece === playerTwoPiece) {
+						if (board[bot[0]][bot[1]]) {
+							if (board[bot[0]][bot[1]].piece === playerOnePiece) {
+								whitePiece.push(botBoard)
+								hasFoundLastBlack = board[bot[0]][bot[1]]
+							}
+						}
+					}
+				}
+				
+				if (currentTurn === "P2") {
+					if (botBoard.piece === playerOnePiece) {
+						if (board[bot[0]][bot[1]]) {
+							if (board[bot[0]][bot[1]].piece === playerTwoPiece) {
+								blackPiece.push(botBoard)
+								hasFoundLastWhite = board[bot[0]][bot[1]]
+							}
+						}
 					}
 				}
 			}
 
-			if (board[botLeft[0]][botLeft[1]].piece) {
-				if (board[botLeft[0]][botLeft[1]].piece === playerOnePiece) {
-					// hasFoundFirstBlack = true;
-					blackPiece.push(board[botLeft[0]][botLeft[1]]);
-					if (hasFoundFirstBlack && currentTurn === "P1") {
-						whitePiece.push(board[botLeft[0]][botLeft[1]]);
-					} else if (hasFoundFirstWhite && currentTurn === "P2") {
-						blackPiece.push(board[botLeft[0]][botLeft[1]]);
+			if (botLeftBoard) {
+				if (currentTurn === "P1") {
+					if (botLeftBoard.piece === playerTwoPiece) {
+						if (board[botLeft[0]][botLeft[1]]) {
+							if (board[botLeft[0]][botLeft[1]].piece === playerOnePiece) {
+								whitePiece.push(botLeftBoard)
+								hasFoundLastBlack = board[botLeft[0]][botLeft[1]]
+							}
+						}
 					}
 				}
-				if (board[botLeft[0]][botLeft[1]].piece === playerTwoPiece) {
-					// console.log("White piece found!");
-					// hasFoundFirstWhite = true;
-					if (hasFoundFirstBlack && currentTurn === "P1") {
-						whitePiece.push(board[botLeft[0]][botLeft[1]]);
-					} else if (hasFoundFirstWhite && currentTurn === "P2") {
-						blackPiece.push(board[botLeft[0]][botLeft[1]]);
-					}
-				}
-			}
-
-			if (board[top[0]][top[1]].piece) {
-				if (board[top[0]][top[1]].piece === playerOnePiece) {
-					// hasFoundFirstBlack = true;
-					blackPiece.push(board[top[0]][top[1]]);
-					if (hasFoundFirstBlack && currentTurn === "P1") {
-						whitePiece.push(board[top[0]][top[1]]);
-					} else if (hasFoundFirstWhite && currentTurn === "P2") {
-						blackPiece.push(board[top[0]][top[1]]);
-					}
-				}
-				if (board[top[0]][top[1]].piece === playerTwoPiece) {
-					// console.log("White piece found!");
-					// hasFoundFirstWhite = true;
-					if (hasFoundFirstBlack && currentTurn === "P1") {
-						whitePiece.push(board[top[0]][top[1]]);
-					} else if (hasFoundFirstWhite && currentTurn === "P2") {
-						blackPiece.push(board[top[0]][top[1]]);
+				
+				if (currentTurn === "P2") {
+					if (botLeftBoard.piece === playerOnePiece) {
+						if (board[botLeft[0]][botLeft[1]]) {
+							if (board[botLeft[0]][botLeft[1]].piece === playerTwoPiece) {
+								blackPiece.push(botLeftBoard)
+								hasFoundLastWhite = board[botLeft[0]][botLeft[1]]
+							}
+						}
 					}
 				}
 			}
 
-			if (board[topRight[0]][topRight[1]].piece) {
-				if (board[topRight[0]][topRight[1]].piece === playerOnePiece) {
-					// hasFoundFirstBlack = true;
-					blackPiece.push(board[topRight[0]][topRight[1]]);
-					if (hasFoundFirstBlack && currentTurn === "P1") {
-						whitePiece.push(board[topRight[0]][topRight[1]]);
-					} else if (hasFoundFirstWhite && currentTurn === "P2") {
-						blackPiece.push(board[topRight[0]][topRight[1]]);
+			if (botRightBoard) {
+				if (currentTurn === "P1") {
+					if (botRightBoard.piece === playerTwoPiece) {
+						if (board[botRight[0]][botRight[1]]) {
+							if (board[botRight[0]][botRight[1]].piece === playerOnePiece) {
+								whitePiece.push(botRightBoard)
+								hasFoundLastBlack = board[botRight[0]][botRight[1]]
+							}
+						}
 					}
 				}
-				if (board[topRight[0]][topRight[1]].piece === playerTwoPiece) {
-					// console.log("White piece found!");
-					// hasFoundFirstWhite = true;
-					if (hasFoundFirstBlack && currentTurn === "P1") {
-						whitePiece.push(board[topRight[0]][topRight[1]]);
-					} else if (hasFoundFirstWhite && currentTurn === "P2") {
-						blackPiece.push(board[topRight[0]][topRight[1]]);
-					}
-				}
-			}
-
-			if (board[midLeft[0]][midLeft[1]].piece) {
-				if (board[midLeft[0]][midLeft[1]].piece === playerOnePiece) {
-					// hasFoundFirstBlack = true;
-					blackPiece.push(board[midLeft[0]][midLeft[1]]);
-					if (hasFoundFirstBlack && currentTurn === "P1") {
-						whitePiece.push(board[midLeft[0]][midLeft[1]]);
-					} else if (hasFoundFirstWhite && currentTurn === "P2") {
-						blackPiece.push(board[midLeft[0]][midLeft[1]]);
-					}
-				}
-				if (board[midLeft[0]][midLeft[1]].piece === playerTwoPiece) {
-					// console.log("White piece found!");
-					// hasFoundFirstWhite = true;
-					if (hasFoundFirstBlack && currentTurn === "P1") {
-						whitePiece.push(board[midLeft[0]][midLeft[1]]);
-					} else if (hasFoundFirstWhite && currentTurn === "P2") {
-						blackPiece.push(board[midLeft[0]][midLeft[1]]);
+				
+				if (currentTurn === "P2") {
+					if (botRightBoard.piece === playerOnePiece) {
+						if (board[botRight[0]][botRight[1]]) {
+							if (board[botRight[0]][botRight[1]].piece === playerTwoPiece) {
+								blackPiece.push(botRightBoard)
+								hasFoundLastWhite = board[botRight[0]][botRight[1]]
+							}
+						}
 					}
 				}
 			}
 
-			if (board[topLeft[0]][topLeft[1]].piece) {
-				if (board[topLeft[0]][topLeft[1]].piece === playerOnePiece) {
-					// hasFoundFirstBlack = true;
-					blackPiece.push(board[topLeft[0]][topLeft[1]]);
-					if (hasFoundFirstBlack && currentTurn === "P1") {
-						whitePiece.push(board[topLeft[0]][topLeft[1]]);
-					} else if (hasFoundFirstWhite && currentTurn === "P2") {
-						blackPiece.push(board[topLeft[0]][topLeft[1]]);
+			if (topLeftBoard) {
+				if (currentTurn === "P1") {
+					if (topLeftBoard.piece === playerTwoPiece) {
+						if (board[topLeft[0]][topLeft[1]]) {
+							if (board[topLeft[0]][topLeft[1]].piece === playerOnePiece) {
+								whitePiece.push(topLeftBoard)
+								hasFoundLastBlack = board[topLeft[0]][topLeft[1]]
+							}
+						}
 					}
 				}
-				if (board[topLeft[0]][topLeft[1]].piece === playerTwoPiece) {
-					// console.log("White piece found!");
-					// hasFoundFirstWhite = true;
-					if (hasFoundFirstBlack && currentTurn === "P1") {
-						whitePiece.push(board[topLeft[0]][topLeft[1]]);
-					} else if (hasFoundFirstWhite && currentTurn === "P2") {
-						blackPiece.push(board[topLeft[0]][topLeft[1]]);
-					}
-				}
-			}
-
-			if (board[midRight[0]][midRight[1]].piece) {
-				if (board[midRight[0]][midRight[1]].piece === playerOnePiece) {
-					// hasFoundFirstBlack = true;
-					blackPiece.push(board[midRight[0]][midRight[1]]);
-					if (hasFoundFirstBlack && currentTurn === "P1") {
-						whitePiece.push(board[midRight[0]][midRight[1]]);
-					} else if (hasFoundFirstWhite && currentTurn === "P2") {
-						blackPiece.push(board[midRight[0]][midRight[1]]);
-					}
-				}
-				if (board[midRight[0]][midRight[1]].piece === playerTwoPiece) {
-					// console.log("White piece found!");
-					// hasFoundFirstWhite = true;
-					if (hasFoundFirstBlack && currentTurn === "P1") {
-						whitePiece.push(board[midRight[0]][midRight[1]]);
-					} else if (hasFoundFirstWhite && currentTurn === "P2") {
-						blackPiece.push(board[midRight[0]][midRight[1]]);
+				
+				if (currentTurn === "P2") {
+					if (topLeftBoard.piece === playerOnePiece) {
+						if (board[topLeft[0]][topLeft[1]]) {
+							if (board[topLeft[0]][topLeft[1]].piece === playerTwoPiece) {
+								blackPiece.push(topLeftBoard)
+								hasFoundLastWhite = board[topLeft[0]][topLeft[1]]
+							}
+						}
 					}
 				}
 			}
 
-			if (blackPiece && currentTurn === "P1") {
-				whitePiece.forEach(element => {
-					element.piece = playerOnePiece
-					element.string = black;
-				})
+			if (topRightBoard) {
+				if (currentTurn === "P1") {
+					if (topRightBoard.piece === playerTwoPiece) {
+						if (board[topRight[0]][topRight[1]]) {
+							if (board[topRight[0]][topRight[1]].piece === playerOnePiece) {
+								whitePiece.push(topRightBoard)
+								hasFoundLastBlack = board[topRight[0]][topRight[1]]
+							}
+						}
+					}
+				}
+				
+				if (currentTurn === "P2") {
+					if (topRightBoard.piece === playerOnePiece) {
+						if (board[topRight[0]][topRight[1]]) {
+							if (board[topRight[0]][topRight[1]].piece === playerTwoPiece) {
+								blackPiece.push(topRightBoard)
+								hasFoundLastWhite = board[topRight[0]][topRight[1]]
+							}
+						}
+					}
+				}
 			}
+
+			if (topBoard) {
+				if (currentTurn === "P1") {
+					if (topBoard.piece === playerTwoPiece) {
+						if (board[top[0]][top[1]]) {
+							if (board[top[0]][top[1]].piece === playerOnePiece) {
+								whitePiece.push(topBoard)
+								hasFoundLastBlack = board[top[0]][top[1]]
+							}
+						}
+					}
+				}
+				
+				if (currentTurn === "P2") {
+					if (topBoard.piece === playerOnePiece) {
+						if (board[top[0]][top[1]]) {
+							if (board[top[0]][top[1]].piece === playerTwoPiece) {
+								blackPiece.push(topBoard)
+								hasFoundLastWhite = board[top[0]][top[1]]
+							}
+						}
+					}
+				}
+			}
+
+			if (midLeftBoard) {
+				if (currentTurn === "P1") {
+					if (midLeftBoard.piece === playerTwoPiece) {
+						if (board[midLeft[0]][midLeft[1]]) {
+							if (board[midLeft[0]][midLeft[1]].piece === playerOnePiece) {
+								whitePiece.push(midLeftBoard)
+								hasFoundLastBlack = board[midLeft[0]][midLeft[1]]
+							}
+						}
+					}
+				}
+				
+				if (currentTurn === "P2") {
+					if (midLeftBoard.piece === playerOnePiece) {
+						if (board[midLeft[0]][midLeft[1]]) {
+							if (board[midLeft[0]][midLeft[1]].piece === playerTwoPiece) {
+								blackPiece.push(midLeftBoard)
+								hasFoundLastWhite = board[midLeft[0]][midLeft[1]]
+							}
+						}
+					}
+				}
+			}
+
+			if (midRightBoard) {
+				if (currentTurn === "P1") {
+					if (midRightBoard.piece === playerTwoPiece) {
+						if (board[midRight[0]][midRight[1]]) {
+							if (board[midRight[0]][midRight[1]].piece === playerOnePiece) {
+								whitePiece.push(midRightBoard)
+								hasFoundLastBlack = board[midRight[0]][midRight[1]]
+							}
+						}
+					}
+				}
+				
+				if (currentTurn === "P2") {
+					if (midRightBoard.piece === playerOnePiece) {
+						if (board[midRight[0]][midRight[1]]) {
+							if (board[midRight[0]][midRight[1]].piece === playerTwoPiece) {
+								blackPiece.push(midRightBoard)
+								hasFoundLastWhite = board[midRight[0]][midRight[1]]
+						}
+					}
+				}
+			}
+
+			sum++;
 
 		}
 	}
-	if (checkForPiecesFunc) {
-		return;
+	if (whitePiece && hasFoundLastBlack && currentTurn === "P1" && !checkForPiecesFunc) {
+		whitePiece.forEach(element => {
+			element.piece = playerOnePiece
+			element.string = black;
+		})
+	} else if (blackPiece && hasFoundLastWhite && currentTurn === "P2" && !checkForPiecesFunc) {
+		blackPiece.forEach(element => {
+			element.piece = playerTwoPiece
+			element.string = white;
+		})
 	}
+	if (checkForPiecesFunc) {
+		if (whitePiece && hasFoundLastBlack && currentTurn === "P1") {
+			// console.log(whitePiece, "a");
+			return "p1";
+		} else if (blackPiece && hasFoundLastWhite && currentTurn === "P2") {
+			return "p2";
+		}
+	}
+	return false;
+}
 }
 
 async function playTurn(playerToMove) {
@@ -637,7 +765,9 @@ async function playTurn(playerToMove) {
 	let xPos;
 	let yPos;
 	// let canMove = false;
+	// await checkNumberOfPiecesInBoard();
 	if (playerToMove === "P1") {
+		await checkForMovableCells(currentTurn);
 		class InputPrompt extends Enquirer.Input {
 
 			constructor(options = {}) {
@@ -650,7 +780,6 @@ async function playTurn(playerToMove) {
 				this.write(`${this.state.message}${this.state.input}`);
 			}
 		}
-		// enquirer.Enqregister()
 		enquirer.register('inputmove', InputPrompt)
 		const promptInput = new InputPrompt({
 			type: 'prompt',
@@ -661,76 +790,156 @@ async function playTurn(playerToMove) {
 		await promptInput.run().then(res => input = res)
 		// input = prompt(`${playerOneColor("(" + playerToMove + ")")} ${playerOneBgColor(" Input move! ")} ${chalk.gray("[Format must be: X, Y]:")} `)
 		if (!input) {
-			console.log("Exiting...");
+			console.log(chalk.grey("Exiting..."));
 			process.exit(1)
 		}
 		if (!input.includes(",")) {
-			console.log(chalk.red("\nERROR: Invalid Input!\n"));
+			console.log(playerOneBgColor("\n Invalid input format! \n"));
 			gameloop();
 		}
 		xPos = input.split(",")[0].trim();
 		yPos = input.split(",")[1].trim();
-		console.log(xPos, yPos);
+		// console.log(xPos, yPos);
 		let canMove = new Promise(async (resolve, reject) => {
 			let valid = movableCellsForTurn.filter(v => v.xPos == xPos && v.yPos == yPos);
-			valid[0].string = "a"
-			board[valid[0].xPos][valid[0].yPos].string = "a"
-			board[0][0].string = "a"
-			// console.log(playerToMove);
+			if (valid.length === 0) {
+				return reject('Invalid Move!')
+			}
+
 			board[Number(xPos)][Number(yPos)].string = (playerToMove === "P1") ? black : white;
 			board[Number(xPos)][Number(yPos)].piece = (playerToMove === "P1") ? playerOnePiece : playerTwoPiece;
-			// console.log(board[valid[0].xPos][valid[0].yPos].string);
-			// console.log(valid);
-			await checkPlay(Number(xPos), Number(yPos)).then(res => console.log(res))
-			resolve("Resuelto");
-			return true;
+			await checkPlay(Number(xPos), Number(yPos)).then(res => {})
+			
+			return resolve(true);
 		})
-		await canMove.then(async res => {
-			console.log(res);
-			if (!res) {
-				console.log(chalk.red("\nERROR: Invalid Move!\n"));
-				gameloop()
+
+		await canMove.then(async res => {}).catch(async err => {
+			if (err === 'Invalid Move!') {
+				console.log(playerOneBgColor("\n Illegal move! \n"));
+				console.log(await gameloop())
+				currentTurn = "P1"
+				return;
 			}
 		})
 	} else {
-		input = prompt(`${playerTwoColor("(" + playerToMove + ")")} ${playerTwoBgColor.black(" Input move! ")} ${chalk.gray("[Format must be: X, Y]:")} `)
+		await checkForMovableCells(currentTurn);
+		class InputPrompt extends Enquirer.Input {
+
+			constructor(options = {}) {
+				super(options);
+				this.cursorHide();
+				this.render()
+			}
+			render() {
+				this.clear(); // clear previously rendered prompt from the terminal
+				this.write(`${this.state.message}${this.state.input}`);
+			}
+		}
+		// enquirer.register('inputmove', InputPrompt)
+		const promptInput = new InputPrompt({
+			type: 'prompt',
+			message: `${playerTwoColor("(" + playerToMove + ")")} ${playerTwoBgColor.black(" Input move! ")} ${chalk.gray("[Format must be: X, Y]:")} `,
+			autofill: "show",
+			prompt: "A"
+		})
+		await promptInput.run().then(res => input = res)
+		// input = prompt(`${playerOneColor("(" + playerToMove + ")")} ${playerOneBgColor(" Input move! ")} ${chalk.gray("[Format must be: X, Y]:")} `)
 		if (!input) {
 			console.log("Exiting...");
 			process.exit(1)
 		}
 		if (!input.includes(",")) {
-			console.log(chalk.red("\nERROR: Invalid Input!\n"));
+			console.log(playerTwoBgColor("\n Invalid input format! \n"));
 			gameloop();
 		}
 		xPos = input.split(",")[0].trim();
 		yPos = input.split(",")[1].trim();
-		movableCellsForTurn.filter(v => v.xPos === xPos && v.yPos === yPos).forEach(element => {
-			console.log(chalk.redBright(`P1 moved [ ${element.xPos}, ${element.yPos} ]`), "\n");
+		// console.log(xPos, yPos);
+		let canMove = new Promise(async (resolve, reject) => {
+			let valid = movableCellsForTurn.filter(v => v.xPos == xPos && v.yPos == yPos);
+			if (valid.length === 0) {
+
+				return reject('Invalid Move!')
+				// reject(false);
+			}
+			// console.log(playerToMove);
 			board[Number(xPos)][Number(yPos)].string = (playerToMove === "P1") ? black : white;
 			board[Number(xPos)][Number(yPos)].piece = (playerToMove === "P1") ? playerOnePiece : playerTwoPiece;
-			canMove = true;
-		});
-		if (!canMove) {
-			console.log(chalk.red("\nERROR: Invalid Move!\n"));
-			gameloop()
-		}
+			// console.log(board[valid[0].xPos][valid[0].yPos].string);
+			// console.log(valid);
+			await checkPlay(Number(xPos), Number(yPos)).then(res => {})
+			
+			return resolve(true);
+		})
+
+		await canMove.then(async res => {}).catch(async err => {
+			if (err === 'Invalid Move!') {
+				console.log(playerTwoBgColor.black("\n Illegal move! \n"));
+				console.log(await gameloop())
+				currentTurn = "P2"
+				return;
+			}
+		})
+
+
 	}
-	// let [xPos, yPos] = [Number(input.split(",")[0].trim()), Number(input.split(",")[1].trim())];
-	// board[xPos][yPos].string = (playerToMove === "P1") ? black : white;
-	// board[xPos][yPos].piece = (playerToMove === "P1") ? playerOnePiece : playerTwoPiece;
 	currentTurn = (playerToMove === "P1") ? "P2" : "P1";
 
 
-	checkNumberOfPiecesInBoard();
-	checkForMovableCells(currentTurn);
-	printBoard(board);
-	console.log("printed", board[3][4]);
+	 checkNumberOfPiecesInBoard();
+	await checkForMovableCells(currentTurn);
+	await printBoard(board);
 	gameloop();
 }
 
-async function gameloop() {
-	// movableCellsForTurn.length = 0;
-	await playTurn(currentTurn)
+async function checkWinner() {
+	let blackPieces = 0
+	let whitePieces = 0
+	if (checkNumberOfPiecesInBoard() >= 64) {
+		cellsWithPieces.forEach(element => {
+			if (element.piece === playerOnePiece) {
+				blackPieces++;
+			} else {
+				whitePieces++;
+			}
+		})	
+	} 
+	if (blackPieces > whitePieces) {
+		return "P1"
+	} else if (whitePieces > blackPieces) {
+		return "P2"
+	} else {
+		return false;
+	}
 }
 
-// playTurn(currentTurn)
+async function gameloop() {
+	let isThereAWinner = false;
+	await checkWinner().then(async winner => {
+		if (winner != false) {
+			isThereAWinner = true;
+			console.log(playerOneColor(" "+ figlet.textSync(`${winner} WINS! `, {
+				font: othelloText,
+				horizontalLayout: 'default',
+				verticalLayout: 'default',
+				width: 2200,
+				whitespaceBreak: true
+			})))
+			play = false;
+			const response = await Enquirer.select({
+				name: 'Options',
+				message: `${winner + " wins! Congrats!"}`,
+				choices: ['Main Menu', 'Exit'],
+				initial: 0
+			});
+			if (response === 'Exit') {
+				process.exit(0);
+			}
+			currentTurn = "P1";
+			await callScreen("Main Menu")
+		}
+	})
+	if (!isThereAWinner) {
+		return await playTurn(currentTurn)
+	}
+}
